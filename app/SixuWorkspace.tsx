@@ -1,7 +1,9 @@
 'use client';
 /* eslint-disable jsx-a11y/label-has-associated-control, react/react-compiler */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ArrowLeft, ArrowRight, BookOpen, BrainCircuit, Check, ChevronDown, CircleAlert, CirclePlus, Clock3, Compass, ExternalLink, Feather, FileText, Filter, Home, Lightbulb, Link2, Menu, MessageCircleQuestion, MoreHorizontal, Plus, Search, Settings2, Sparkles, UserRound, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -98,7 +100,38 @@ function Topbar({ navigate, addSource, openMenu }: { navigate: (v: View) => void
 function PageHead({ kicker, title, description, action }: { kicker: string; title: string; description?: string; action?: React.ReactNode }) { return <div className="page-head"><div><p className="eyebrow">{kicker}</p><h1>{title}</h1>{description && <p>{description}</p>}</div>{action}</div>; }
 
 function HomeView({ navigate, saved, setSaved }: { navigate: (v: View) => void; saved: string[]; setSaved: (v: string[]) => void }) {
-  return <div className="page-wrap home-page"><section className="hero"><div><p className="eyebrow">THURSDAY · 03 SEPTEMBER</p><h1>你的知识，今天能<br />帮你创作什么？</h1><p className="hero-copy">过去 30 天，你留下了 28 份素材。它们正在汇成一些值得继续思考的方向。</p></div><div className="memory-stack" aria-label="近期素材正在形成关联"><MemoryCard className="memory-one" label="视频" title={<>AI 时代的<br />个人判断力</>} meta="12:48 · B站" /><MemoryCard className="memory-two" label="收藏" title={<>我们为什么<br />总在囤积信息</>} meta="小红书 · 4 天前" /><MemoryCard className="memory-three" label="原创" title={<>知识库不是<br />第二个文件夹</>} meta="公众号 · 6 月" /><div className="thread-line" /><span className="connection-dot">5</span></div></section><section className="section-block"><div className="section-heading"><div><p className="eyebrow">TODAY&apos;S OPPORTUNITIES</p><h2>今天值得继续的方向</h2></div><button className="text-action">刷新发现 <Sparkles /></button></div><div className="topic-grid">{TOPICS.map((topic, index) => { const Icon = topic.icon; const isSaved = saved.includes(topic.title); return <article className={`topic-card ${topic.tone} ${index === 0 ? 'featured' : ''}`} key={topic.title}><div className="topic-top"><span className="topic-type"><Icon />{topic.type}</span><button className="save-dot" onClick={() => setSaved(isSaved ? saved.filter((item) => item !== topic.title) : [...saved, topic.title])} aria-label={isSaved ? '取消保存' : '保存选题'}>{isSaved ? '已存' : '+'}</button></div><h3>{topic.title}</h3><p>{topic.reason}</p><div className="topic-footer"><small>{topic.meta}</small><button onClick={() => navigate('topic')}>查看依据 <ArrowRight /></button></div></article>; })}</div></section><section className="lower-grid"><article className="insight-panel"><div className="section-heading compact"><div><p className="eyebrow">AI INSIGHTS</p><h2>知识正在发生变化</h2></div><span className="count-pill">3</span></div><Insight icon="↗" title="你的“AI 效率”观点可能正在变化" text="最近新增的 3 条素材更关注判断质量，而不只是节省时间。" meta="因为你在 11 天内重复收藏了相近主题" /><Insight icon="⌁" title="两份旧资料有了新连接" text="“信息焦虑”与“内容定位”都指向同一个行动缺口。" meta="基于 5 条收藏与 1 篇原创" /></article><article className="continue-panel"><p className="eyebrow">CONTINUE THINKING</p><span className="session-label">上次停在 · 边界</span><h3>AI 应该在创作中扮演什么角色？</h3><p>“如果 AI 不替你判断，那么它最应该在哪一步介入？”</p><div className="idea-slots"><span className="done">判断</span><span className="done">原因</span><span>边界</span><span>证据</span><span>反方</span></div><Button onClick={() => navigate('thinking')} className="primary-cta">继续思考 <ArrowRight /></Button></article></section></div>;
+  return <div className="home-page"><ScrollMemory /><div className="page-wrap home-content"><section className="section-block"><div className="section-heading"><div><p className="eyebrow">TODAY&apos;S OPPORTUNITIES</p><h2>这些素材，正在指向五个方向</h2></div><button className="text-action">重新漫游 <Sparkles /></button></div><div className="topic-grid">{TOPICS.map((topic, index) => { const Icon = topic.icon; const isSaved = saved.includes(topic.title); return <article className={`topic-card ${topic.tone} ${index === 0 ? 'featured' : ''}`} key={topic.title}><div className="topic-top"><span className="topic-type"><Icon />{topic.type}</span><button className="save-dot" onClick={() => setSaved(isSaved ? saved.filter((item) => item !== topic.title) : [...saved, topic.title])} aria-label={isSaved ? '取消保存' : '保存选题'}>{isSaved ? '已存' : '+'}</button></div><h3>{topic.title}</h3><p>{topic.reason}</p><div className="topic-footer"><small>{topic.meta}</small><button onClick={() => navigate('topic')}>查看依据 <ArrowRight /></button></div></article>; })}</div></section><section className="lower-grid"><article className="insight-panel"><div className="section-heading compact"><div><p className="eyebrow">AI INSIGHTS</p><h2>知识正在发生变化</h2></div><span className="count-pill">3</span></div><Insight icon="↗" title="你的“AI 效率”观点可能正在变化" text="最近新增的 3 条素材更关注判断质量，而不只是节省时间。" meta="因为你在 11 天内重复收藏了相近主题" /><Insight icon="⌁" title="两份旧资料有了新连接" text="“信息焦虑”与“内容定位”都指向同一个行动缺口。" meta="基于 5 条收藏与 1 篇原创" /></article><article className="continue-panel"><p className="eyebrow">CONTINUE THINKING</p><span className="session-label">上次停在 · 边界</span><h3>AI 应该在创作中扮演什么角色？</h3><p>“如果 AI 不替你判断，那么它最应该在哪一步介入？”</p><div className="idea-slots"><span className="done">判断</span><span className="done">原因</span><span>边界</span><span>证据</span><span>反方</span></div><Button onClick={() => navigate('thinking')} className="primary-cta">继续思考 <ArrowRight /></Button></article></section></div></div>;
+}
+
+function ScrollMemory() {
+  const root = useRef<HTMLElement>(null);
+  const scene = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    gsap.registerPlugin(ScrollTrigger);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !root.current || !scene.current) return;
+    const context = gsap.context(() => {
+      const cards = gsap.utils.toArray<HTMLElement>('.scroll-card');
+      gsap.set(cards, { transformOrigin: '50% 50%' });
+      const tl = gsap.timeline({ scrollTrigger: { trigger: root.current, start: 'top top', end: 'bottom bottom', scrub: 0.8 } });
+      tl.to(scene.current, { xPercent: -9, yPercent: 7, scale: 1.48, rotate: -5, ease: 'sine.inOut' }, 0)
+        .to(cards[0], { x: 110, y: -55, rotate: -12, ease: 'sine.inOut' }, 0)
+        .to(cards[1], { x: -30, y: 95, rotate: 7, ease: 'sine.inOut' }, 0)
+        .to(scene.current, { xPercent: 10, yPercent: -6, scale: 1.72, rotate: 7, ease: 'sine.inOut' }, 1)
+        .to(cards[2], { x: -100, y: -20, rotate: -8, ease: 'sine.inOut' }, 1)
+        .to(cards[3], { x: 80, y: 70, rotate: 9, ease: 'sine.inOut' }, 1)
+        .to(scene.current, { xPercent: 0, yPercent: 0, scale: 0.92, rotate: -2, ease: 'sine.inOut' }, 2)
+        .to(cards, { x: 0, y: 0, rotate: (index) => [-5, 4, -2, 6, -4][index], scale: 0.94, ease: 'power3.out' }, 2)
+        .to('.scroll-finale', { opacity: 1, y: 0, ease: 'power3.out' }, 2.25);
+    }, root);
+    return () => context.revert();
+  }, []);
+  const cards = [
+    ['视频 · 12:48', 'AI 时代的个人判断力', 'cyan'], ['收藏 · 小红书', '我们为什么总在囤积信息', 'pink'],
+    ['原创 · 公众号', '知识库不是第二个文件夹', 'yellow'], ['视频 · B站', '创作者的观点系统', 'purple'],
+    ['收藏 · 访谈', '工具越智能，人要保留什么？', 'blue'],
+  ];
+  return <section className="scrollaroids" ref={root}><div className="scroll-sticky"><div className="scroll-intro"><p className="eyebrow">MEMORY STREAM · SCROLL TO EXPLORE</p><h1>散落的信息，<br />正在寻找彼此。</h1><p>过去 30 天，你留下了 28 份素材。向下滚动，看看它们如何从片段汇成新的创作机会。</p><div className="scroll-cue"><span /> SCROLL</div></div><div className="scroll-viewport"><div className="grain" /><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="scroll-scene" ref={scene}>{cards.map(([meta, title, color], index) => <article className={`scroll-card card-${index + 1} ${color}`} key={title}><div className="card-visual"><span>{String(index + 1).padStart(2, '0')}</span><i /></div><small>{meta}</small><strong>{title}</strong></article>)}</div><div className="scroll-finale"><span>5 个方向</span><strong>你的知识，今天能<br />帮你创作什么？</strong></div></div></div></section>;
 }
 
 function MemoryCard({ className, label, title, meta }: { className: string; label: string; title: React.ReactNode; meta: string }) { return <div className={`memory-card ${className}`}><span>{label}</span><strong>{title}</strong><small>{meta}</small></div>; }

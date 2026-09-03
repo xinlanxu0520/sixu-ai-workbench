@@ -4,30 +4,26 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ArrowLeft, ArrowRight, BookOpen, BrainCircuit, Check, ChevronDown, CircleAlert, CirclePlus, Clock3, Compass, ExternalLink, Feather, FileText, Filter, Home, Lightbulb, Link2, Menu, MessageCircleQuestion, MoreHorizontal, Plus, Search, Settings2, Sparkles, UserRound, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, CircleAlert, CirclePlus, Clock3, ExternalLink, FileText, Filter, Lightbulb, Link2, MessageCircleQuestion, MoreHorizontal, Plus, Search, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import StaggeredMenu from '@/components/StaggeredMenu';
 
 type View = 'home' | 'library' | 'source' | 'ask' | 'topic' | 'thinking' | 'ideas' | 'create' | 'profile';
 type Source = { id: number; title: string; platform: string; kind: string; status: string; date: string; summary: string; tags: string[]; original?: boolean };
 type Idea = { id: number; statement: string; reason: string; boundary: string; evidence: number; status: string };
 
-const NAV = [
-  { id: 'home' as View, label: 'Home', icon: Home }, { id: 'library' as View, label: '知识库', icon: BookOpen },
-  { id: 'ideas' as View, label: '观点', icon: Lightbulb }, { id: 'create' as View, label: '创作', icon: Feather },
-  { id: 'profile' as View, label: '我的', icon: UserRound },
-];
-
-const TOPICS = [
-  { type: '趋势机会', title: 'AI 工具正在从“替你完成”转向“陪你判断”', reason: '你最近收藏的 4 条内容都在讨论 AI 工作流，但你的旧文章更强调人的判断。', meta: '4 条个人素材 · 近 7 天讨论上升', tone: 'terracotta', icon: Sparkles },
-  { type: '隐藏连接', title: '知识管理的终点，也许不是整理而是形成观点', reason: '“第二大脑”与“内容选题焦虑”两个主题，在你的资料中出现了新的交叉。', meta: '连接 2 个知识簇 · 6 条证据', tone: 'sage', icon: BrainCircuit },
-  { type: '反常识', title: '收藏越多，反而可能越难开始创作', reason: '你的收藏中存在两种冲突：持续输入能带来灵感，也可能推迟表达。', meta: '2 组相反观点 · 5 条证据', tone: 'blue', icon: Compass },
-  { type: '你的观点', title: '真正有价值的 AI，不应该替创作者拥有观点', reason: '这是你三个月前写下的判断；现在有 3 条新证据可以继续展开。', meta: '形成于 6 月 18 日 · 3 条新证据', tone: 'gold', icon: Lightbulb },
-  { type: '受众需要', title: '如何把零散收藏变成一周选题计划？', reason: '你的目标读者最近更关心可执行的方法，而这个问题还未被你系统回答。', meta: '匹配“知识型创作者” · 内容缺口', tone: 'ink', icon: UserRound },
+const MENU_ITEMS = [
+  { id: 'home', label: '首页', ariaLabel: '进入首页知识漫游' },
+  { id: 'library', label: '知识库', ariaLabel: '进入个人知识库' },
+  { id: 'ask', label: '提问', ariaLabel: '向个人知识提问' },
+  { id: 'ideas', label: '观点', ariaLabel: '进入观点库' },
+  { id: 'create', label: '创作', ariaLabel: '进入创作工作台' },
+  { id: 'profile', label: '我的', ariaLabel: '进入个人设置' },
 ];
 
 const INITIAL_SOURCES: Source[] = [
@@ -51,7 +47,6 @@ export default function SixuWorkspace() {
   const [selectedSource, setSelectedSource] = useState(1);
   const [savedTopics, setSavedTopics] = useState<string[]>([]);
   const [notice, setNotice] = useState('');
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const cached = localStorage.getItem('sixu-state');
@@ -67,14 +62,14 @@ export default function SixuWorkspace() {
     return () => lifecycle.abort();
   }, []);
 
-  const navigate = (next: View) => { setView(next); setMobileOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const navigate = (next: View) => { setView(next); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const addSource = (source: Source) => { setSources((current) => [source, ...current]); setNotice('素材已收录，正在深度理解'); };
   const selected = sources.find((item) => item.id === selectedSource) || sources[0];
-  return <div className="app-shell">
-    <Sidebar view={view} navigate={navigate} open={mobileOpen} />
+  return <div className={`app-shell ${view === 'home' ? 'home-shell' : ''}`}>
+    <StaggeredMenu items={MENU_ITEMS} activeId={view} onSelect={(id) => navigate(id as View)} />
     <main className="main-stage">
-      <Topbar navigate={navigate} addSource={addSource} openMenu={() => setMobileOpen(!mobileOpen)} />
-      {view === 'home' && <HomeView navigate={navigate} saved={savedTopics} setSaved={setSavedTopics} />}
+      {view !== 'home' && <Topbar navigate={navigate} addSource={addSource} />}
+      {view === 'home' && <HomeView navigate={navigate} />}
       {view === 'library' && <LibraryView sources={sources} openSource={(id) => { setSelectedSource(id); navigate('source'); }} />}
       {view === 'source' && selected && <SourceView source={selected} back={() => navigate('library')} />}
       {view === 'ask' && <AskView navigate={navigate} />}
@@ -84,58 +79,79 @@ export default function SixuWorkspace() {
       {view === 'create' && <CreateView ideas={ideas} setNotice={setNotice} />}
       {view === 'profile' && <ProfileView setNotice={setNotice} />}
     </main>
-    <MobileNav view={view} navigate={navigate} />
     {notice && <output className="toast"><Check />{notice}</output>}
   </div>;
 }
 
-function Sidebar({ view, navigate, open }: { view: View; navigate: (v: View) => void; open: boolean }) {
-  return <aside className={`sidebar ${open ? 'mobile-open' : ''}`} aria-label="主导航"><button className="brand" onClick={() => navigate('home')} aria-label="回到首页"><span className="brand-mark">思</span><span className="brand-name">思序</span></button><nav className="nav-list">{NAV.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => navigate(item.id)} className={`nav-item ${view === item.id ? 'active' : ''}`}><Icon /><span>{item.label}</span></button>; })}</nav><div className="sidebar-note"><span className="eyebrow">本周进展</span><strong>2 个观点正在形成</strong><div className="progress-track"><span style={{ width: '64%' }} /></div><small>继续一次未完成的思考</small></div><div className="profile-chip"><span className="avatar">林</span><span><strong>林默</strong><small>AI × 创作</small></span></div></aside>;
-}
-
-function Topbar({ navigate, addSource, openMenu }: { navigate: (v: View) => void; addSource: (s: Source) => void; openMenu: () => void }) {
-  return <header className="topbar"><button className="menu-button" onClick={openMenu} aria-label="打开菜单"><Menu /></button><button className="ask-button" onClick={() => navigate('ask')}><Search /> 问问我的知识 <kbd>⌘ K</kbd></button><div className="top-actions"><AddSourceDialog addSource={addSource} /><button className="avatar-button" onClick={() => navigate('profile')} aria-label="打开个人资料">林</button></div></header>;
+function Topbar({ navigate, addSource }: { navigate: (v: View) => void; addSource: (s: Source) => void }) {
+  return <header className="topbar"><button className="ask-button" onClick={() => navigate('ask')}><Search /> 问问我的知识 <kbd>⌘ K</kbd></button><div className="top-actions"><AddSourceDialog addSource={addSource} /><button className="avatar-button" onClick={() => navigate('profile')} aria-label="打开个人资料">林</button></div></header>;
 }
 
 function PageHead({ kicker, title, description, action }: { kicker: string; title: string; description?: string; action?: React.ReactNode }) { return <div className="page-head"><div><p className="eyebrow">{kicker}</p><h1>{title}</h1>{description && <p>{description}</p>}</div>{action}</div>; }
 
-function HomeView({ navigate, saved, setSaved }: { navigate: (v: View) => void; saved: string[]; setSaved: (v: string[]) => void }) {
-  return <div className="home-page"><ScrollMemory /><div className="page-wrap home-content"><section className="section-block"><div className="section-heading"><div><p className="eyebrow">TODAY&apos;S OPPORTUNITIES</p><h2>这些素材，正在指向五个方向</h2></div><button className="text-action">重新漫游 <Sparkles /></button></div><div className="topic-grid">{TOPICS.map((topic, index) => { const Icon = topic.icon; const isSaved = saved.includes(topic.title); return <article className={`topic-card ${topic.tone} ${index === 0 ? 'featured' : ''}`} key={topic.title}><div className="topic-top"><span className="topic-type"><Icon />{topic.type}</span><button className="save-dot" onClick={() => setSaved(isSaved ? saved.filter((item) => item !== topic.title) : [...saved, topic.title])} aria-label={isSaved ? '取消保存' : '保存选题'}>{isSaved ? '已存' : '+'}</button></div><h3>{topic.title}</h3><p>{topic.reason}</p><div className="topic-footer"><small>{topic.meta}</small><button onClick={() => navigate('topic')}>查看依据 <ArrowRight /></button></div></article>; })}</div></section><section className="lower-grid"><article className="insight-panel"><div className="section-heading compact"><div><p className="eyebrow">AI INSIGHTS</p><h2>知识正在发生变化</h2></div><span className="count-pill">3</span></div><Insight icon="↗" title="你的“AI 效率”观点可能正在变化" text="最近新增的 3 条素材更关注判断质量，而不只是节省时间。" meta="因为你在 11 天内重复收藏了相近主题" /><Insight icon="⌁" title="两份旧资料有了新连接" text="“信息焦虑”与“内容定位”都指向同一个行动缺口。" meta="基于 5 条收藏与 1 篇原创" /></article><article className="continue-panel"><p className="eyebrow">CONTINUE THINKING</p><span className="session-label">上次停在 · 边界</span><h3>AI 应该在创作中扮演什么角色？</h3><p>“如果 AI 不替你判断，那么它最应该在哪一步介入？”</p><div className="idea-slots"><span className="done">判断</span><span className="done">原因</span><span>边界</span><span>证据</span><span>反方</span></div><Button onClick={() => navigate('thinking')} className="primary-cta">继续思考 <ArrowRight /></Button></article></section></div></div>;
+function HomeView({ navigate }: { navigate: (v: View) => void }) {
+  return <div className="home-page"><ScrollMemory navigate={navigate} /></div>;
 }
 
-function ScrollMemory() {
+function ScrollMemory({ navigate }: { navigate: (v: View) => void }) {
   const root = useRef<HTMLElement>(null);
   const scene = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce || !root.current || !scene.current) return;
+    if (!root.current || !scene.current) return;
     const context = gsap.context(() => {
       const cards = gsap.utils.toArray<HTMLElement>('.scroll-card');
-      gsap.set(cards, { transformOrigin: '50% 50%' });
-      const tl = gsap.timeline({ scrollTrigger: { trigger: root.current, start: 'top top', end: 'bottom bottom', scrub: 0.8 } });
-      tl.to(scene.current, { xPercent: -9, yPercent: 7, scale: 1.48, rotate: -5, ease: 'sine.inOut' }, 0)
-        .to(cards[0], { x: 110, y: -55, rotate: -12, ease: 'sine.inOut' }, 0)
-        .to(cards[1], { x: -30, y: 95, rotate: 7, ease: 'sine.inOut' }, 0)
-        .to(scene.current, { xPercent: 10, yPercent: -6, scale: 1.72, rotate: 7, ease: 'sine.inOut' }, 1)
-        .to(cards[2], { x: -100, y: -20, rotate: -8, ease: 'sine.inOut' }, 1)
-        .to(cards[3], { x: 80, y: 70, rotate: 9, ease: 'sine.inOut' }, 1)
-        .to(scene.current, { xPercent: 0, yPercent: 0, scale: 0.92, rotate: -2, ease: 'sine.inOut' }, 2)
-        .to(cards, { x: 0, y: 0, rotate: (index) => [-5, 4, -2, 6, -4][index], scale: 0.94, ease: 'power3.out' }, 2)
-        .to('.scroll-finale', { opacity: 1, y: 0, ease: 'power3.out' }, 2.25);
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) {
+        gsap.set(cards, { opacity: 1, scale: 1, rotation: 0 });
+        gsap.set('.scroll-finale', { opacity: 1, y: 0 });
+        return;
+      }
+      gsap.set(cards, { transformOrigin: '50% 50%', opacity: 0.42 });
+      gsap.set(cards[0], { opacity: 1, scale: 1.08 });
+      const focus = [
+        { x: 21, y: 9, scale: 1.42, rotation: -4 },
+        { x: -8, y: 16, scale: 1.5, rotation: 5 },
+        { x: -22, y: 5, scale: 1.45, rotation: -3 },
+        { x: 12, y: -14, scale: 1.48, rotation: 4 },
+        { x: -9, y: -16, scale: 1.44, rotation: -5 },
+        { x: 3, y: 0, scale: 1.4, rotation: 3 },
+      ];
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: root.current,
+          start: 'top top',
+          end: () => `+=${window.innerHeight * 6}`,
+          pin: '.scroll-sticky',
+          scrub: 0.8,
+          invalidateOnRefresh: true,
+        },
+      });
+      tl.to('.scroll-intro', { autoAlpha: 0, x: -70, duration: 0.65, ease: 'power3.in' }, 0);
+      cards.forEach((card, index) => {
+        const at = index * 1.05;
+        tl.to(scene.current, { xPercent: focus[index].x, yPercent: focus[index].y, scale: focus[index].scale, rotation: focus[index].rotation, duration: 1, ease: 'sine.inOut' }, at)
+          .to(cards, { opacity: 0.3, scale: 0.88, duration: 0.55, ease: 'power2.out' }, at)
+          .to(card, { opacity: 1, scale: 1.13, rotation: 0, duration: 0.7, ease: 'power3.out' }, at + 0.12)
+          .to(`.scroll-chapter-${index + 1}`, { autoAlpha: 1, y: 0, duration: 0.48, ease: 'power3.out' }, at + 0.28)
+          .to(`.scroll-chapter-${index + 1}`, { autoAlpha: 0, y: -18, duration: 0.3, ease: 'power2.in' }, at + 0.86);
+      });
+      tl.to(scene.current, { xPercent: 0, yPercent: 0, scale: 0.88, rotation: -2, duration: 1, ease: 'power3.inOut' }, 6.2)
+        .to(cards, { opacity: 0.82, scale: 0.96, rotation: (index) => [-6, 5, -3, 6, -4, 3][index], duration: 0.8, ease: 'power3.out' }, 6.2)
+        .to('.scroll-finale', { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 6.45);
     }, root);
     return () => context.revert();
   }, []);
   const cards = [
-    ['视频 · 12:48', 'AI 时代的个人判断力', 'cyan'], ['收藏 · 小红书', '我们为什么总在囤积信息', 'pink'],
-    ['原创 · 公众号', '知识库不是第二个文件夹', 'yellow'], ['视频 · B站', '创作者的观点系统', 'purple'],
-    ['收藏 · 访谈', '工具越智能，人要保留什么？', 'blue'],
+    { meta: '28 份素材', title: '进入你的知识库', copy: '从收藏、视频和原创里，重新发现已经拥有的知识。', color: 'cyan', target: 'library' as View, action: '查看素材' },
+    { meta: '基于个人知识', title: '问一个真正属于你的问题', copy: '回答附带原文证据，不用在通用答案里寻找自己。', color: 'pink', target: 'ask' as View, action: '开始提问' },
+    { meta: '5 个机会方向', title: '发现值得继续追的线索', copy: '让分散的信息彼此靠近，看见趋势、冲突和隐藏连接。', color: 'yellow', target: 'topic' as View, action: '查看选题' },
+    { meta: '2 个活跃观点', title: '把模糊直觉想清楚', copy: '沿着判断、原因、边界、证据和反方，形成自己的观点。', color: 'purple', target: 'thinking' as View, action: '继续思考' },
+    { meta: '可复用资产', title: '回到你的观点库', copy: '每个被确认的判断都会沉淀下来，等待下一次被调用。', color: 'blue', target: 'ideas' as View, action: '查看观点' },
+    { meta: '从观点到表达', title: '开始一篇新的创作', copy: '带着证据与边界进入写作，让 AI 协助组织而不是替你判断。', color: 'pink', target: 'create' as View, action: '进入创作' },
   ];
-  return <section className="scrollaroids" ref={root}><div className="scroll-sticky"><div className="scroll-intro"><p className="eyebrow">MEMORY STREAM · SCROLL TO EXPLORE</p><h1>散落的信息，<br />正在寻找彼此。</h1><p>过去 30 天，你留下了 28 份素材。向下滚动，看看它们如何从片段汇成新的创作机会。</p><div className="scroll-cue"><span /> SCROLL</div></div><div className="scroll-viewport"><div className="grain" /><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="scroll-scene" ref={scene}>{cards.map(([meta, title, color], index) => <article className={`scroll-card card-${index + 1} ${color}`} key={title}><div className="card-visual"><span>{String(index + 1).padStart(2, '0')}</span><i /></div><small>{meta}</small><strong>{title}</strong></article>)}</div><div className="scroll-finale"><span>5 个方向</span><strong>你的知识，今天能<br />帮你创作什么？</strong></div></div></div></section>;
+  return <section className="scrollaroids" ref={root}><div className="scroll-sticky"><div className="scroll-intro"><p className="eyebrow">你的个人知识空间</p><h1>散落的信息，<br />正在寻找彼此。</h1><p>思序把收藏、思考与创作留在同一条路径上。滚动经过每一张卡片，也可以直接进入具体工作。</p></div><div className="scroll-viewport"><div className="grain" /><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="scroll-scene" ref={scene}>{cards.map((card, index) => <button className={`scroll-card card-${index + 1} ${card.color}`} key={card.title} type="button" onClick={() => navigate(card.target)} aria-label={`${card.action}：${card.title}`}><div className="card-visual"><span>{String(index + 1).padStart(2, '0')}</span><i /></div><small>{card.meta}</small><strong>{card.title}</strong><span className="card-action">{card.action} <ArrowRight /></span></button>)}</div>{cards.map((card, index) => <div className={`scroll-chapter scroll-chapter-${index + 1}`} key={card.title}><small>{card.meta}</small><strong>{card.title}</strong><p>{card.copy}</p></div>)}<div className="scroll-finale"><span>从输入到表达</span><strong>你的知识，今天能<br />帮你创作什么？</strong><button type="button" onClick={() => navigate('create')}>开始创作 <ArrowRight /></button></div></div></div></section>;
 }
-
-function MemoryCard({ className, label, title, meta }: { className: string; label: string; title: React.ReactNode; meta: string }) { return <div className={`memory-card ${className}`}><span>{label}</span><strong>{title}</strong><small>{meta}</small></div>; }
-function Insight({ icon, title, text, meta }: { icon: string; title: string; text: string; meta: string }) { return <div className="insight-row"><span className="insight-icon">{icon}</span><div><strong>{title}</strong><p>{text}</p><small>{meta}</small></div><button>看看</button></div>; }
 
 function LibraryView({ sources, openSource }: { sources: Source[]; openSource: (id: number) => void }) {
   const [query, setQuery] = useState(''); const [filter, setFilter] = useState('全部');
@@ -199,5 +215,3 @@ function AddSourceDialog({ addSource }: { addSource: (source: Source) => void })
   const submit = (event: { preventDefault: () => void }) => { event.preventDefault(); addSource({ id: Date.now(), title, platform: url.includes('bilibili') ? 'B站' : url.includes('youtube') ? 'YouTube' : url ? '链接' : '手动输入', kind: '收藏', status: 'AI 解析中', date: '刚刚', summary: content.slice(0, 72), tags: ['待整理'] }); setDone(true); };
   return <Dialog onOpenChange={(open) => { if (!open) setTimeout(() => setDone(false), 200); }}><DialogTrigger render={<Button className="add-button" />}><Plus /> 添加素材</DialogTrigger><DialogContent className="source-dialog"><DialogHeader><span className="dialog-icon"><CirclePlus /></span><DialogTitle>添加一份素材</DialogTitle><DialogDescription>粘贴正文或视频链接。原始内容会只读保存，你可以随时补充自己的理解。</DialogDescription></DialogHeader>{done ? <div className="success-state"><span>✓</span><strong>已收录，正在深度理解</strong><p>解析完成后会出现在知识收件箱。</p></div> : <form onSubmit={submit} className="source-form"><label>标题<Input value={title} onChange={(event) => setTitle(event.target.value)} required placeholder="给素材一个容易辨认的标题" /></label><label>链接（可选）<Input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="小红书、B站或 YouTube 链接" /></label><label>正文或转录<Textarea value={content} onChange={(event) => setContent(event.target.value)} required rows={6} placeholder="粘贴正文、笔记或视频转录…" /></label><div className="dialog-actions"><Button type="submit" className="primary-cta">收录并解析 <ArrowRight /></Button></div></form>}</DialogContent></Dialog>;
 }
-
-function MobileNav({ view, navigate }: { view: View; navigate: (v: View) => void }) { return <nav className="mobile-nav" aria-label="移动端主导航">{NAV.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => navigate(item.id)} className={view === item.id ? 'active' : ''}><Icon /><span>{item.label}</span></button>; })}</nav>; }
